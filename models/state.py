@@ -3,7 +3,8 @@
 import models
 from os import getenv
 from models.base_model import Base
-from models.base_model import BaseModel
+from models.base_model import BaseModel,
+from models import HBNB_TYPE_STORAGE
 from models.city import City
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -20,15 +21,30 @@ class State(BaseModel, Base):
         cities (sqlalchemy relationship): The State-City relationship.
     """
     __tablename__ = "states"
-    name = Column(String(128), nullable=False)
-    cities = relationship("City",  backref="state", cascade="delete")
+    if HBNB_TYPE_STORAGE == 'db':
+        name = Column(String(128),
+                      nullable=False)
+        cities = relationship("City",  backref="state",
+                cascade='all, delete, delete-orphan')
 
-    if getenv("HBNB_TYPE_STORAGE") != "db":
+    else:
+        name = ""
+
+
         @property
         def cities(self):
-            """Get a list of all related City objects."""
-            city_list = []
-            for city in list(models.storage.all(City).values()):
+            '''returns the list of City instances with state_id
+                equals the current State.id
+                FileStorage relationship between State and City
+            '''
+            from models import storage, City
+            related_cities = []
+            cities = storage.all(City)
+            for city in cities.values():
                 if city.state_id == self.id:
-                    city_list.append(city)
-            return city_list
+                    related_cities.append(city)
+            return related_cities
+
+    def __init__(self, *args, **kwargs):
+        """Initialises Amenity"""
+        super().__init__(*args, **kwargs)
